@@ -99,7 +99,6 @@ TEST(StorageTest, GetIfAbsent)
 {
     SimpleLRU storage;
 
-
     std::string value;
     EXPECT_FALSE(storage.Get("KEY1", value));
 
@@ -194,4 +193,29 @@ TEST(StorageTest, MaxTest) {
         std::string res;
         EXPECT_FALSE(storage.Get(key, res));
     }
+}
+
+TEST(StorageTest, PutSetGet_2) {
+    SimpleLRU storage;
+
+    std::string value500 = "";
+    std::string value200 = "";
+
+    for (long i = 0; i < 500; ++i) {
+        value500 += "a";
+    }
+
+    for (long i = 0; i < 200; ++i) {
+        value200 += "b";
+    }
+
+    EXPECT_TRUE(storage.Put("KEY1", value500));
+    EXPECT_TRUE(storage.Put("KEY2", value500));
+
+    EXPECT_TRUE(storage.Set("KEY1", value500 + value200));
+
+    EXPECT_FALSE(storage.Set("KEY2", "val2"));
+
+
+    EXPECT_TRUE(storage.Get("KEY1", value200));
 }
