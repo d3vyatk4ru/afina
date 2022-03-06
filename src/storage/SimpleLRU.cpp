@@ -146,18 +146,18 @@ namespace Afina {
             }
 
             add_to_tail(&it->second.get());
-            // удаляем голову, пока не будет свободного места
+
             while (_curr_size - it->second.get().value.size() + value.size() > _max_size) {
                 delete_node(_lru_head.get());
             }
 
             if (!_curr_size) {
                 append_node(key, value);
-                _curr_size += value.size() - key.size();
+                _curr_size += value.size() - it->second.get().value.size();
                 return true;
             }
 
-            _curr_size += value.size() - key.size();
+            _curr_size += value.size() - it->second.get().value.size();
             it->second.get().value = value;
 
             return true;
@@ -187,7 +187,6 @@ namespace Afina {
             }
 
             value = it->second.get().value;
-
             add_to_tail(&it->second.get());
 
             return true;
