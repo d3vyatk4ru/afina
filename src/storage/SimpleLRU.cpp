@@ -62,6 +62,32 @@ namespace Afina {
             _curr_size += _lru_tail->key.size() + _lru_head->value.size();
         }
 
+        void SimpleLRU::add_to_tail(lru_node *node) {
+
+            if (node == _lru_tail) {
+                return;
+            }
+
+            auto prev = node->prev;
+            std::unique_ptr<lru_node> tmp;
+
+            if (prev) {
+                tmp = std::move(prev->next);
+                prev->next = std::move(tmp->next);
+                prev->next->prev = prev;
+
+            } else {
+                tmp = std::move(_lru_head);
+                _lru_head = std::move(tmp->next);
+                _lru_head->prev = 0;
+            }
+
+            _lru_tail->next = std::move(tmp);
+            _lru_tail->next->prev = _lru_tail;
+            _lru_tail = _lru_tail->next.get();
+            _lru_tail->next = 0;
+        }
+
         // See MapBasedGlobalLockImpl.h
         bool SimpleLRU::Put(const std::string &key, const std::string &value) {
 
@@ -75,15 +101,17 @@ namespace Afina {
 
             // если ключа нет в кэше
             if (it == _lru_index.end()) {
-                // удаляем голову, пока не будет свободного места
-                while (_curr_size + new_node_size > _max_size) {
 
+                while (_curr_size + new_node_size > _max_size) {
                     delete_node(_lru_head.get());
                 }
-
                 append_node(key, value);
 
             } else {
+
+                while (_curr_size + new_node_size > _max_size) {
+                    delete_node(_lru_head.get());
+                }
 
                 it->second.get().value = value;
             }
@@ -107,22 +135,30 @@ namespace Afina {
         // See MapBasedGlobalLockImpl.h
         bool SimpleLRU::Set(const std::string &key, const std::string &value) {
 
+            if (key.size() + value.size() > _max_size) {
+                return false;
+            }
+
             auto it = _lru_index.find(key);
 
             if (it == _lru_index.end()) {
                 return false;
             }
 
+            add_to_tail(&it->second.get());
             // удаляем голову, пока не будет свободного места
             while (_curr_size - it->second.get().value.size() + value.size() > _max_size) {
                 delete_node(_lru_head.get());
             }
 
-            _curr_size += value.size() - it->second.get().value.size();
+            if (!_curr_size) {
+                append_node(key, value);
+                _curr_size += value.size() - key.size();
+                return true;
+            }
 
-            delete_node(&it->second.get());
-            append_node(key, value);
-
+            _curr_size += value.size() - key.size();
+            it->second.get().value = value;
 
             return true;
         }
@@ -152,8 +188,7 @@ namespace Afina {
 
             value = it->second.get().value;
 
-            delete_node(&it->second.get());
-            append_node(key, value);
+            add_to_tail(&it->second.get());
 
             return true;
         }

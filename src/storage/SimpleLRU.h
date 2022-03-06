@@ -21,7 +21,15 @@ public:
 
     ~SimpleLRU() {
         _lru_index.clear();
-        _lru_head.reset(); // TODO: Here is stack overflow
+
+        // идем по списку и удаляем каждую ноду
+        while (_lru_head && _lru_head->next) {
+            _lru_head = std::move(_lru_head->next);
+            _lru_head->prev->next.reset();
+            _lru_head->prev = 0;
+        }
+
+        _lru_head.reset();
     }
 
     // Implements Afina::Storage interface
@@ -72,6 +80,8 @@ private:
     void delete_node(lru_node *node);
 
     void append_node(const std::string &key, const std::string &value);
+
+    void add_to_tail(lru_node *node);
 };
 
 } // namespace Backend
