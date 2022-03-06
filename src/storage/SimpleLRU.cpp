@@ -109,7 +109,7 @@ namespace Afina {
 
             } else {
 
-                while (_curr_size + new_node_size > _max_size) {
+                while (_curr_size + value.size() > _max_size) {
                     delete_node(_lru_head.get());
                 }
 
